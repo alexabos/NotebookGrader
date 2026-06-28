@@ -1,0 +1,37 @@
+Basic Python Assignment Rubric (0–10 scale)
+
+This assignment covers three core Python concepts: lists, loops, and functions.
+Grade the submission holistically using the criteria below.
+
+10 — Excellent
+- All three concepts (lists, loops, functions) are used correctly and purposefully
+- Code runs without errors and produces correct output
+- Functions have clear names, appropriate parameters, and return values
+- Loops iterate over lists or ranges correctly
+- Code is clean and readable
+
+8–9 — Good
+- All three concepts are present and mostly correct
+- Minor issues (off-by-one, unnecessary code, small logic errors) but overall works
+- Output is correct or nearly correct
+
+6–7 — Satisfactory
+- At least two of the three concepts are used correctly
+- Code runs but may produce partially incorrect output
+- Some structural issues (e.g., function defined but never called, loop exits early)
+
+4–5 — Developing
+- Only one concept used correctly, or all three attempted with significant errors
+- Code may crash on some inputs or produce wrong output
+- Logic errors are present but effort is evident
+
+2–3 — Beginning
+- Minimal working code; concepts are attempted but largely incorrect
+- Heavy syntax errors or fundamental misunderstanding of the concepts
+
+0–1 — Non-submission or empty
+- Notebook is blank, contains only markdown, or code does not run at all
+- No meaningful attempt at the assignment
+
+Deduct 1–2 points if required packages are missing (import errors), since it suggests
+the student did not test their code in the expected environment.
