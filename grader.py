@@ -74,13 +74,13 @@ def main():
 
 def _print_summary(results, errors, output_path):
     total = len(results)
-    graded = [r for r in results if isinstance(r["grade"], int)]
+    graded = [r for r in results if isinstance(r["grade"], (int, float))]
     avg = sum(r["grade"] for r in graded) / len(graded) if graded else 0
     passed = sum(1 for r in graded if r["grade"] >= 6)
 
     print(f"\n--- Grading Summary ---")
     print(f"Notebooks graded : {total}")
-    print(f"Average grade    : {avg:.1f} / 10")
+    print(f"Average grade    : {avg:.2f} / 10")
     print(f"Passed (>=6)     : {passed} / {total}")
     print(f"Errors           : {errors}")
     print(f"Results saved to : {output_path}")

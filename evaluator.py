@@ -29,18 +29,21 @@ def evaluate_notebook(notebook_content, rubric, error_type=None):
 {notebook_content}
 {error_note}
 
-Evalúa la entrega con una nota de 0 a 10 siguiendo la rúbrica. Sé justo, detallado y constructivo.
+Corrige cada ejercicio individualmente asignándole los puntos que indica la rúbrica. La nota final es la suma exacta de los puntos obtenidos en cada ejercicio (máximo 10, con dos decimales).
 
 Para cada ejercicio, indica:
+- Los puntos obtenidos sobre el total (e.g. "1.25/1.5 pts")
 - Si la solución es correcta o incorrecta
 - Qué errores concretos tiene (si los hay): errores de sintaxis, lógica incorrecta, nombre de variable incorrecto, método mal utilizado, resultado erróneo, etc.
 - Una breve sugerencia de mejora cuando corresponda
 
+Al final, suma los puntos de todos los ejercicios para obtener la nota final con dos decimales.
+
 Dirígete al estudiante directamente en español, con un tono cercano y motivador.
 
 Responde exactamente en este formato (sin texto adicional):
-GRADE: <entero 0-10>
-COMMENT: <comentario detallado en español, ejercicio por ejercicio, explicando errores concretos y sugerencias de mejora>"""
+GRADE: <suma total con dos decimales, entre 0.00 y 10.00>
+COMMENT: <comentario detallado en español, ejercicio por ejercicio con puntos obtenidos, errores concretos y sugerencias de mejora>"""
 
     message = _get_client().messages.create(
         model="claude-sonnet-4-6",
@@ -52,11 +55,11 @@ COMMENT: <comentario detallado en español, ejercicio por ejercicio, explicando 
 
 
 def _parse_response(text):
-    grade_match = re.search(r"GRADE:\s*(\d+)", text)
+    grade_match = re.search(r"GRADE:\s*([\d]+(?:[.,]\d+)?)", text)
     comment_match = re.search(r"COMMENT:\s*(.+)", text, re.DOTALL)
 
-    grade = int(grade_match.group(1)) if grade_match else 0
-    grade = max(0, min(10, grade))
+    grade = round(float(grade_match.group(1).replace(",", ".")), 2) if grade_match else 0.0
+    grade = max(0.0, min(10.0, grade))
 
     comment = comment_match.group(1).strip() if comment_match else text.strip()
 
