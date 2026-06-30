@@ -11,45 +11,65 @@ from evaluator import evaluate_notebook
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Automatically grade Jupyter notebooks.")
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--notebooks", help="Folder containing .ipynb files")
-    group.add_argument("--file", help="Single .ipynb file to grade")
-    parser.add_argument("--rubric", required=True, help="Path to rubric.txt")
-    parser.add_argument("--output", default="grades.csv", help="Output CSV file (default: grades.csv)")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--assignment", help="Assignment folder containing rubric.txt and submissions/")
+    source.add_argument("--notebooks", help="Folder containing .ipynb files")
+    source.add_argument("--file", help="Single .ipynb file to grade")
+    parser.add_argument("--rubric", help="Path to rubric.txt (required with --notebooks or --file)")
+    parser.add_argument("--output", help="Output CSV file (default: grades.csv or <assignment>/grades.csv)")
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
+def resolve_paths(args):
+    if args.assignment:
+        assignment = Path(args.assignment)
+        if not assignment.is_dir():
+            print(f"Error: assignment folder '{args.assignment}' not found.", file=sys.stderr)
+            sys.exit(1)
+        rubric_path = assignment / "rubric.txt"
+        notebooks_dir = assignment / "submissions"
+        output = Path(args.output) if args.output else assignment / "grades.csv"
+        notebooks = None
+    elif args.file:
+        rubric_path = Path(args.rubric) if args.rubric else None
+        notebooks_dir = None
+        notebooks = [Path(args.file)]
+        output = Path(args.output) if args.output else Path("grades.csv")
+    else:
+        rubric_path = Path(args.rubric) if args.rubric else None
+        notebooks_dir = Path(args.notebooks)
+        notebooks = None
+        output = Path(args.output) if args.output else Path("grades.csv")
 
-    rubric_path = Path(args.rubric)
+    if rubric_path is None:
+        print("Error: --rubric is required when using --notebooks or --file.", file=sys.stderr)
+        sys.exit(1)
     if not rubric_path.is_file():
-        print(f"Error: rubric file '{args.rubric}' not found.", file=sys.stderr)
+        print(f"Error: rubric file '{rubric_path}' not found.", file=sys.stderr)
         sys.exit(1)
 
-    rubric = rubric_path.read_text().strip()
-
-    if args.file:
-        notebook_path = Path(args.file)
-        if not notebook_path.is_file():
-            print(f"Error: '{args.file}' not found.", file=sys.stderr)
-            sys.exit(1)
-        notebooks = [notebook_path]
-    else:
-        notebooks_dir = Path(args.notebooks)
+    if notebooks is None:
         if not notebooks_dir.is_dir():
-            print(f"Error: '{args.notebooks}' is not a directory.", file=sys.stderr)
+            print(f"Error: submissions folder '{notebooks_dir}' not found.", file=sys.stderr)
             sys.exit(1)
         notebooks = sorted(notebooks_dir.glob("*.ipynb"))
 
     if not notebooks:
-        print(f"No .ipynb files found in '{args.notebooks}'.")
+        print(f"No .ipynb files found in '{notebooks_dir}'.")
         sys.exit(0)
+
+    return notebooks, rubric_path, output
+
+
+def main():
+    args = parse_args()
+    notebooks, rubric_path, output = resolve_paths(args)
+    rubric = rubric_path.read_text().strip()
 
     results = []
     errors = 0
 
-    with open(args.output, "w", newline="") as csvfile:
+    with open(output, "w", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=["filename", "grade", "comment"])
         writer.writeheader()
 
@@ -78,7 +98,7 @@ def main():
             writer.writerow(row)
             results.append(row)
 
-    _print_summary(results, errors, args.output)
+    _print_summary(results, errors, output)
 
 
 def _print_summary(results, errors, output_path):

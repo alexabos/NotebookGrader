@@ -39,7 +39,7 @@ Given `[15, 3, 45, 87, 1]`:
 - b) Return the maximum and minimum values using `max()` and `min()` (0.5 pts)
 
 ### Ejercicio 7 — Debugging (1.5 points)
-Fix the broken code:
+Fix the broken code and explain the solution:
   ```
   a = "Yann@Lecun"
   nombre = split(a,$)
