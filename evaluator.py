@@ -31,11 +31,9 @@ def evaluate_notebook(notebook_content, rubric, error_type=None):
 
 Corrige cada ejercicio individualmente asignándole los puntos que indica la rúbrica. La nota final es la suma exacta de los puntos obtenidos en cada ejercicio (máximo 10, con dos decimales).
 
-Para cada ejercicio, indica:
-- Los puntos obtenidos sobre el total (e.g. "1.25/1.5 pts")
-- Si la solución es correcta o incorrecta
-- Qué errores concretos tiene (si los hay): errores de sintaxis, lógica incorrecta, nombre de variable incorrecto, método mal utilizado, resultado erróneo, etc.
-- Una breve sugerencia de mejora cuando corresponda
+Para cada ejercicio, indica los puntos obtenidos sobre el total (e.g. "1.25/1.5 pts") y sigue estas pautas:
+- Si la solución es correcta: una frase breve confirmándolo, sin más detalle.
+- Si tiene errores: explica con precisión qué está mal (error de sintaxis, lógica incorrecta, variable mal nombrada, método incorrecto, resultado erróneo, etc.) y cómo corregirlo. Aquí sí sé exhaustivo.
 
 Al final, suma los puntos de todos los ejercicios para obtener la nota final con dos decimales.
 
