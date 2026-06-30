@@ -20,24 +20,31 @@ def evaluate_notebook(notebook_content, rubric, error_type=None):
     elif error_type and error_type.startswith("execution_error"):
         error_note = f"\nNote: Execution failed with {error_type}."
 
-    prompt = f"""You are a programming instructor grading a student's Jupyter notebook submission.
+    prompt = f"""Eres un profesor de programación corrigiendo la entrega de un estudiante en un Jupyter notebook.
 
-## Grading Rubric
+## Rúbrica de evaluación
 {rubric}
 
-## Student Notebook
+## Notebook del estudiante
 {notebook_content}
 {error_note}
 
-Grade this submission on a scale of 0–10 based on the rubric. Be fair, encouraging, and specific.
+Evalúa la entrega con una nota de 0 a 10 siguiendo la rúbrica. Sé justo, detallado y constructivo.
 
-Respond in exactly this format (no extra text):
-GRADE: <integer 0-10>
-COMMENT: <2-4 sentences addressed directly to the student, friendly and constructive>"""
+Para cada ejercicio, indica:
+- Si la solución es correcta o incorrecta
+- Qué errores concretos tiene (si los hay): errores de sintaxis, lógica incorrecta, nombre de variable incorrecto, método mal utilizado, resultado erróneo, etc.
+- Una breve sugerencia de mejora cuando corresponda
+
+Dirígete al estudiante directamente en español, con un tono cercano y motivador.
+
+Responde exactamente en este formato (sin texto adicional):
+GRADE: <entero 0-10>
+COMMENT: <comentario detallado en español, ejercicio por ejercicio, explicando errores concretos y sugerencias de mejora>"""
 
     message = _get_client().messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=512,
+        max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
     )
 
