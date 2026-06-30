@@ -1,37 +1,70 @@
-Basic Python Assignment Rubric (0–10 scale)
+Introducción a Python — Unidad 2: Ejercicios para entregar
+Grading rubric (0–10 scale, total 10 points)
 
-This assignment covers three core Python concepts: lists, loops, and functions.
-Grade the submission holistically using the criteria below.
+---
 
-10 — Excellent
-- All three concepts (lists, loops, functions) are used correctly and purposefully
-- Code runs without errors and produces correct output
-- Functions have clear names, appropriate parameters, and return values
-- Loops iterate over lists or ranges correctly
-- Code is clean and readable
+### Ejercicio 1 — Variables (1 point)
+- a) Numeric variable `a = 2` (0.25 pts)
+- b) String: "Me encanta la programación en Python" (0.25 pts)
+- c) List of 12 months (Enero–Diciembre) (0.25 pts)
+- d) Dictionary of 4 elements mapping a series name to number of seasons (0.25 pts)
 
-8–9 — Good
-- All three concepts are present and mostly correct
-- Minor issues (off-by-one, unnecessary code, small logic errors) but overall works
-- Output is correct or nearly correct
+### Ejercicio 2 — String manipulation (1.5 points)
+Extract first name, surname, and birth year from the string "Rosalia Vila was born in 1992"
+and print them. Award full marks for any correct approach (split, indexing, etc.)
 
-6–7 — Satisfactory
-- At least two of the three concepts are used correctly
-- Code runs but may produce partially incorrect output
-- Some structural issues (e.g., function defined but never called, loop exits early)
+### Ejercicio 3 — Palindromes (2 points)
+- a) Demonstrate that "sobreverbos" is a palindrome (0.5 pts)
+- b) Program that takes user input and checks if it is a palindrome (1 pt)
+  - Note: `input()` will fail in automated execution — do not penalise for this specifically;
+    check that the logic is correct
+- c) Wrap the palindrome check in a function with the word as a parameter (0.5 pts)
 
-4–5 — Developing
-- Only one concept used correctly, or all three attempted with significant errors
-- Code may crash on some inputs or produce wrong output
-- Logic errors are present but effort is evident
+### Ejercicio 4 — Quadratic equation solver (1.5 points)
+Solve ax²+bx+c=0 using the quadratic formula, covering all three discriminant cases:
+- Delta > 0: two real solutions
+- Delta = 0: one double real solution
+- Delta < 0: complex solutions (use `cmath`)
+Award full marks if all three cases are correctly handled and outputs are shown.
+Bonus: explaining how to access the real and imaginary parts of a complex number.
 
-2–3 — Beginning
-- Minimal working code; concepts are attempted but largely incorrect
-- Heavy syntax errors or fundamental misunderstanding of the concepts
+### Ejercicio 5 — Data structures (1.5 points)
+- a) Justify using a dictionary to store book title → rating pairs (0.5 pts)
+- b) Define a dictionary of at least 3 books with ratings and print name + rating for
+  each element (1 pt)
 
-0–1 — Non-submission or empty
-- Notebook is blank, contains only markdown, or code does not run at all
-- No meaningful attempt at the assignment
+### Ejercicio 6 — List operations (1 point)
+Given `[15, 3, 45, 87, 1]`:
+- a) Return the sorted list using `sorted()` (0.5 pts)
+- b) Return the maximum and minimum values using `max()` and `min()` (0.5 pts)
 
-Deduct 1–2 points if required packages are missing (import errors), since it suggests
-the student did not test their code in the expected environment.
+### Ejercicio 7 — Debugging (1.5 points)
+Fix the broken code:
+  ```
+  a = "Yann@Lecun"
+  nombre = split(a,$)
+  print(nombre)
+  print(apellido)
+  ```
+Correct solution: `nombre, apellido = a.split('@')` — splitting on `@` and unpacking
+into two variables. Award full marks if:
+- The syntax error (`$`) is fixed
+- `split` is called as a string method (`a.split(...)`) not a standalone function
+- `apellido` is defined before being printed
+- The student explains what was wrong
+
+---
+
+### Overall grading scale
+
+10    — All 7 exercises fully correct with working code and outputs
+8–9   — Minor issues in 1–2 exercises (small logic errors, missing output, style issues)
+6–7   — Mostly correct; one exercise missing or substantially wrong
+4–5   — About half the exercises correct; significant gaps in understanding
+2–3   — Only 1–2 exercises correct; effort evident but major errors throughout
+0–1   — Blank or near-blank submission; no meaningful attempt
+
+### Notes
+- Do not penalise `input()` calls for failing during automated execution — check logic only
+- Shadowing built-in names (e.g. `list = [...]`) is a minor issue worth a small deduction
+- Partial credit within exercises should be applied proportionally to the point values above
