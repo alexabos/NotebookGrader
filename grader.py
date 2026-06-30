@@ -11,7 +11,9 @@ from evaluator import evaluate_notebook
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Automatically grade Jupyter notebooks.")
-    parser.add_argument("--notebooks", required=True, help="Folder containing .ipynb files")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--notebooks", help="Folder containing .ipynb files")
+    group.add_argument("--file", help="Single .ipynb file to grade")
     parser.add_argument("--rubric", required=True, help="Path to rubric.txt")
     parser.add_argument("--output", default="grades.csv", help="Output CSV file (default: grades.csv)")
     return parser.parse_args()
@@ -20,18 +22,25 @@ def parse_args():
 def main():
     args = parse_args()
 
-    notebooks_dir = Path(args.notebooks)
-    if not notebooks_dir.is_dir():
-        print(f"Error: '{args.notebooks}' is not a directory.", file=sys.stderr)
-        sys.exit(1)
-
     rubric_path = Path(args.rubric)
     if not rubric_path.is_file():
         print(f"Error: rubric file '{args.rubric}' not found.", file=sys.stderr)
         sys.exit(1)
 
     rubric = rubric_path.read_text().strip()
-    notebooks = sorted(notebooks_dir.glob("*.ipynb"))
+
+    if args.file:
+        notebook_path = Path(args.file)
+        if not notebook_path.is_file():
+            print(f"Error: '{args.file}' not found.", file=sys.stderr)
+            sys.exit(1)
+        notebooks = [notebook_path]
+    else:
+        notebooks_dir = Path(args.notebooks)
+        if not notebooks_dir.is_dir():
+            print(f"Error: '{args.notebooks}' is not a directory.", file=sys.stderr)
+            sys.exit(1)
+        notebooks = sorted(notebooks_dir.glob("*.ipynb"))
 
     if not notebooks:
         print(f"No .ipynb files found in '{args.notebooks}'.")
