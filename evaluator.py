@@ -29,19 +29,19 @@ def evaluate_notebook(notebook_content, rubric, error_type=None):
 {notebook_content}
 {error_note}
 
-Corrige cada ejercicio individualmente asignándole los puntos que indica la rúbrica. La nota final es la suma exacta de los puntos obtenidos en cada ejercicio (máximo 10, con dos decimales).
+Corrige cada ejercicio individualmente asignándole los puntos que indica la rúbrica.
 
 Para cada ejercicio, indica los puntos obtenidos sobre el total (e.g. "1.25/1.5 pts") y sigue estas pautas:
 - Si la solución es correcta: una frase breve confirmándolo, sin más detalle.
 - Si tiene errores: explica con precisión qué está mal (error de sintaxis, lógica incorrecta, variable mal nombrada, método incorrecto, resultado erróneo, etc.) y cómo corregirlo. Aquí sí sé exhaustivo.
 
-Al final, suma los puntos de todos los ejercicios para obtener la nota final con dos decimales.
+No calcules ni escribas tú la nota final del notebook (ni una suma total) en ningún sitio: el sistema la calculará automáticamente sumando los puntos que indiques por ejercicio. Limítate a puntuar cada ejercicio individualmente.
 
 Dirígete al estudiante directamente en español, con un tono cercano y motivador.
 
 Responde exactamente en este formato (sin texto adicional):
-GRADE: <suma total con dos decimales, entre 0.00 y 10.00>
-COMMENT: <comentario detallado en español, ejercicio por ejercicio con puntos obtenidos, errores concretos y sugerencias de mejora>"""
+SCORES: <puntos obtenidos en cada ejercicio, en el mismo orden que aparecen en la rúbrica, separados por punto y coma, e.g. "1.5; 1.0; 1.5; 2.0; 2.0; 1.5">
+COMMENT: <comentario detallado en español, ejercicio por ejercicio con puntos obtenidos, errores concretos y sugerencias de mejora. No incluyas una nota final ni un total sumado.>"""
 
     message = _get_client().messages.create(
         model="claude-sonnet-4-6",
@@ -53,12 +53,22 @@ COMMENT: <comentario detallado en español, ejercicio por ejercicio con puntos o
 
 
 def _parse_response(text):
-    grade_match = re.search(r"GRADE:\s*([\d]+(?:[.,]\d+)?)", text)
+    scores_match = re.search(r"SCORES:\s*(.+)", text)
     comment_match = re.search(r"COMMENT:\s*(.+)", text, re.DOTALL)
 
-    grade = round(float(grade_match.group(1).replace(",", ".")), 2) if grade_match else 0.0
+    if scores_match:
+        scores = [
+            float(s.strip().replace(",", "."))
+            for s in scores_match.group(1).split(";")
+            if s.strip()
+        ]
+        grade = round(sum(scores), 2)
+    else:
+        grade = 0.0
     grade = max(0.0, min(10.0, grade))
 
     comment = comment_match.group(1).strip() if comment_match else text.strip()
+    comment = re.sub(r"\n*\**\s*Nota final[^\n]*\**\s*$", "", comment, flags=re.IGNORECASE).strip()
+    comment = f"{comment}\n\n**Nota final: {grade:.2f}/10**"
 
     return {"grade": grade, "comment": comment}
