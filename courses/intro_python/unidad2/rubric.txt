@@ -65,6 +65,9 @@ into two variables. Award full marks if:
 0–1   — Blank or near-blank submission; no meaningful attempt
 
 ### Notes
-- Do not penalise `input()` calls for failing during automated execution — check logic only
+- Do not penalise `input()` calls for failing during automated execution — evaluate the
+  written code's logic as-is (without running it) rather than the execution output
+- Do not penalise generic or bare-bones `print` messages — only penalise if a message is
+  clearly wrong, misleading, or fails to convey the requested information
 - Shadowing built-in names (e.g. `list = [...]`) is a minor issue worth a small deduction
 - Partial credit within exercises should be applied proportionally to the point values above

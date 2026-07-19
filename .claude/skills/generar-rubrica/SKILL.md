@@ -37,10 +37,15 @@ generar una rúbrica de evaluación para esa entrega, para usar con `grader.py`.
 ## Reglas generales
 Estas reglas aplican a todas las rúbricas generadas por esta skill; inclúyelas siempre
 como parte de las Notes del `rubric.txt`, no solo en este documento:
-- **Mensajes de `print` de ejemplo**: si el enunciado muestra un mensaje de ejemplo
-  (p.ej. "56 es divisible por 2"), el texto exacto es solo ilustrativo — no hace falta
-  reproducirlo palabra por palabra para obtener la puntuación completa, basta con que el
-  mensaje del alumno transmita la misma información de forma clara.
+- **Mensajes de `print`**: no penalizar mensajes genéricos o poco elaborados — basta con que
+  transmitan la información pedida. Si el enunciado muestra un mensaje de ejemplo (p.ej.
+  "56 es divisible por 2"), el texto exacto es solo ilustrativo, no hace falta reproducirlo
+  palabra por palabra. Penalizar únicamente si el mensaje es claramente incorrecto, engañoso
+  o no comunica la información pedida.
+- **Uso de `input()`**: no penalizar el uso de `input()` en ningún ejercicio. `input()` falla
+  en la ejecución automática del notebook, así que en esos casos evalúa la lógica del código
+  tal como está escrito (sin poder ver su ejecución) para comprobar que es correcta, en lugar
+  de basarte en la salida.
 - **Nombres de función**: si el enunciado especifica el nombre de una función (p.ej.
   `elementos_pares`) y el alumno usa un nombre distinto pero la lógica/comportamiento es
   correcto, no penalizar — el nombre exacto no es un criterio de corrección salvo que el

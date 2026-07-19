@@ -47,6 +47,10 @@ Both parts MUST use a list comprehension — award no credit for an equivalent s
 0–1   — Blank or near-blank submission; no meaningful attempt
 
 ### Notes
+- Do not penalise `input()` calls for failing during automated execution — evaluate the
+  written code's logic as-is (without running it) rather than the execution output.
+- Do not penalise generic or bare-bones `print` messages — only penalise if a message is
+  clearly wrong, misleading, or fails to convey the requested information.
 - Ejercicio 2 requires list comprehensions specifically; an otherwise-correct loop-based solution should lose the points for that sub-part.
 - Ejercicio 4a (acronyms) and Ejercicio 5 (tariff hour ranges) are intentionally under-specified in the notebook — grade the underlying logic and give credit for any reasonable, internally consistent interpretation rather than requiring an exact match to one specific answer.
 - Point values above were adjusted from the notebook's own in-cell labels so the rubric sums to exactly 10: Ejercicio 4b was reduced from 2 to 1 point, and the third sub-part of Ejercicio 5 was reduced from 1 to 0.5 points (the notebook's stated sub-part total for Ejercicio 5 was internally inconsistent — 2.5 vs. a stated 2-point exercise total).
