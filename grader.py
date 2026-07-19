@@ -3,10 +3,13 @@ import csv
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
 from tqdm import tqdm
 
 from executor import execute_notebook
 from evaluator import evaluate_notebook
+
+load_dotenv()
 
 
 def parse_args():

@@ -11,11 +11,13 @@ A CLI tool that automatically grades Jupyter notebook submissions using Claude A
 ## Setup
 
 ```bash
-uv venv .venv --python 3.11
-uv pip install nbclient nbformat anthropic tqdm ipykernel --python .venv/bin/python3.11
-.venv/bin/python3.11 -m ipykernel install --user --name python3
-export ANTHROPIC_API_KEY=your-key-here
+uv sync
+.venv/bin/python -m ipykernel install --user --name python3
+cp .env.example .env   # then edit .env and set your ANTHROPIC_API_KEY
 ```
+
+Dependencies are pinned in `uv.lock`; `uv sync` reproduces the exact environment on any machine.
+`.env` is gitignored and loaded automatically via `python-dotenv`.
 
 ## Folder structure
 
@@ -41,18 +43,18 @@ courses/
 
 **Grade a full assignment** (recommended):
 ```bash
-.venv/bin/python3.11 grader.py --assignment ./courses/intro_python/unidad2
+uv run grader.py --assignment ./courses/intro_python/unidad2
 ```
 Automatically reads `rubric.txt` and `submissions/` from the folder, and writes `grades.csv` there.
 
 **Grade a single notebook:**
 ```bash
-.venv/bin/python3.11 grader.py --file ./courses/intro_python/unidad2/submissions/student.ipynb --rubric ./courses/intro_python/unidad2/rubric.txt
+uv run grader.py --file ./courses/intro_python/unidad2/submissions/student.ipynb --rubric ./courses/intro_python/unidad2/rubric.txt
 ```
 
 **Grade a folder manually:**
 ```bash
-.venv/bin/python3.11 grader.py --notebooks ./submissions --rubric ./rubric.txt --output grades.csv
+uv run grader.py --notebooks ./submissions --rubric ./rubric.txt --output grades.csv
 ```
 
 ### Output

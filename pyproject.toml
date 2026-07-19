@@ -1,0 +1,13 @@
+[project]
+name = "notebookgrader"
+version = "0.1.0"
+description = "CLI tool that automatically grades Jupyter notebook submissions using Claude AI"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.40.0",
+    "ipykernel>=6.29.0",
+    "nbclient>=0.10.0",
+    "nbformat>=5.10.0",
+    "python-dotenv>=1.0.0",
+    "tqdm>=4.66.0",
+]
