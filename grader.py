@@ -1,5 +1,6 @@
 import argparse
 import csv
+import logging
 import sys
 from pathlib import Path
 
@@ -10,6 +11,8 @@ from executor import execute_notebook
 from evaluator import evaluate_notebook
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -65,6 +68,8 @@ def resolve_paths(args):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stderr)
+
     args = parse_args()
     notebooks, rubric_path, output = resolve_paths(args)
     rubric = rubric_path.read_text().strip()
@@ -92,6 +97,7 @@ def main():
                 }
             except Exception as e:
                 errors += 1
+                logger.error("Failed to grade '%s': %s: %s", filename, type(e).__name__, e)
                 row = {
                     "filename": filename,
                     "grade": 0,
