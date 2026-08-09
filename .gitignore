@@ -5,3 +5,6 @@ grades.csv
 submissions/
 .ipynb_checkpoints/
 .env
+temp/
+roster.csv
+courses/
