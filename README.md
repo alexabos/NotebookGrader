@@ -1,123 +1,164 @@
-# NotebookGrader
+# NotebookGrader — Automated, rubric-based assessment of Python/Jupyter assignments
 
-A CLI tool that automatically grades Jupyter notebook submissions against an
-instructor-written rubric — executing each notebook, using an LLM only for
-semantic judgment, and computing the final grade in Python from a validated,
-structured assessment.
+NotebookGrader is a CLI tool that grades batches of Jupyter notebook
+submissions against an instructor-written rubric. It executes each notebook,
+uses an LLM for the parts of grading that genuinely require semantic
+judgment, and computes the final score deterministically in Python from a
+validated, structured assessment — the LLM never returns an authoritative
+grade directly. The current implementation calls Claude (Anthropic) as its
+LLM backend; that's an implementation detail behind a small evaluator
+interface, not the core design.
 
 ## Problem
 
 Manually grading Python/Jupyter assignments at class scale is:
 
-- **Time-consuming** — running each notebook, reading the code, and writing
-  individualized feedback per exercise takes real time per student.
-- **Difficult to standardize** — the same mistake can get graded differently
-  depending on when in the pile it was reached.
-- **Difficult to reproduce** — there's no record of *why* a grade was what it
-  was beyond whatever got written in the margin.
+- Time-consuming — running each notebook and writing per-exercise feedback
+  takes real time per student.
+- Difficult to standardize — the same mistake can get graded differently
+  depending on when in the pile it's reached.
+- Difficult to reproduce — there's rarely a record of *why* a grade was what
+  it was.
+- Difficult to scale — the effort grows linearly with class size.
 
 ## Solution
 
-NotebookGrader automates notebook execution and rubric-based assessment,
-using an LLM only for the part that genuinely requires judgment — reading a
-student's code and deciding whether it satisfies an exercise — while keeping
-the grade itself a deterministic, auditable calculation performed in Python.
+NotebookGrader separates grading into stages with a clear division of
+responsibility: execution and error detection are deterministic, semantic
+judgment is delegated to an LLM, and the assessment it returns is validated
+and scored by Python before it becomes a grade.
+
+```text
+Student Notebook
+      ↓
+Notebook execution
+      ↓
+Deterministic execution checks
+      ↓
+LLM-assisted semantic evaluation
+      ↓
+Structured assessment
+      ↓
+Validation
+      ↓
+Python scoring
+      ↓
+Final grade + feedback
+```
+
+The LLM is responsible for semantic assessment only — reading code and
+judging whether it satisfies an exercise. Execution, validation, and scoring
+are all deterministic Python logic.
 
 ## Architecture
 
-```
-                    ┌────────────────┐
-                    │    Notebook    │
-                    └───────┬────────┘
-                            ↓
-                    ┌────────────────┐
-                    │    Executor    │   nbclient runs every cell,
-                    │  (executor.py) │   captures outputs and errors
-                    └───────┬────────┘
-                            ↓
-                 ┌────────────────────────┐
-                 │  Deterministic checks  │   timeout / missing-import
-                 │   (execution status)   │   detection
-                 └────────────┬───────────┘
-                              ↓
-                    ┌────────────────┐
-                    │  LLM Evaluator │   Claude grades each exercise
-                    │ (evaluator.py) │   against the rubric, in Spanish
-                    └───────┬────────┘
-                            ↓
-                  Structured JSON assessment
-                 (per-exercise score + feedback)
-                            ↓
-                     Schema validation
-              (types, score ranges, ids, required
-                 fields — rejects malformed output)
-                            ↓
-                     Python scoring
-             (sum validated per-exercise scores,
-           clamp to [0,10], rubric max_score wins)
-                            ↓
-                    ┌────────────────┐
-                    │   grades.csv   │
-                    │  (grader.py)   │
-                    └────────────────┘
+```mermaid
+flowchart TD
+    A[Student Notebook] --> B["Executor (executor.py)<br/>runs cells via nbclient"]
+    B --> C["Execution results<br/>content + timeout/import_error flags"]
+    C --> D["LLM Evaluator (evaluator.py)<br/>AnthropicEvaluator.get_response"]
+    D --> E["Structured JSON assessment<br/>score / max_score / feedback per exercise"]
+    E --> F["Validation<br/>schema, types, ranges, rubric-derived max_score"]
+    F --> G["Python scoring<br/>sum + clamp to [0,10]"]
+    G --> H["Final report<br/>grades.csv (grader.py)"]
 ```
 
-Each notebook flows through this pipeline independently; a failure at any
-stage is caught, logged, and recorded for that submission without stopping
-the batch.
+This mirrors the actual modules: `executor.py` (execution), `evaluator.py`
+(LLM call, response validation, scoring), and `grader.py` (CLI, batch loop,
+CSV output). `grader.py` wraps each notebook's pipeline in its own
+`try/except`, so a failure at any stage is caught, logged, and recorded for
+that submission without stopping the batch.
 
-## Key Design Principles
+## Key Design Decisions
 
-- **Deterministic execution** — every notebook actually runs; grading is
-  based on real outputs, not a static read of the code.
-- **Rubric-based assessment** — the instructor's `rubric.txt` is the source
-  of truth for what each exercise is worth.
-- **LLM-assisted semantic evaluation** — the LLM is used for what it's good
-  at (reading code, judging correctness, writing feedback), not arithmetic.
-- **Structured, validated outputs** — the LLM must respond in a strict JSON
-  schema; malformed or out-of-range responses are rejected, not silently
-  accepted.
-- **Python-computed final grade** — the score a student receives is always
-  computed and clamped by Python from validated per-exercise data, never
-  trusted verbatim from the LLM.
-- **Fault-tolerant batch processing** — one corrupted notebook, timeout, or
-  malformed LLM response never stops the rest of the batch.
-- **Reproducible environment** — dependencies are pinned via `uv.lock`.
+**Deterministic execution.** Notebooks are actually run with `nbclient`
+(`allow_errors=True`), so grading is based on real outputs, not a static
+read of the code. Execution failures — timeouts, missing imports — are
+detected deterministically before the LLM is involved.
+
+**LLM-assisted semantic evaluation.** The LLM is used where judgment is
+required: whether a particular approach satisfies an exercise, how to award
+partial credit, and how to phrase specific feedback. These aren't things a
+fixed rule can express well, which is exactly what an LLM is suited for.
+
+**Structured output.** The LLM must respond with a strict JSON object — one
+entry per exercise with `id`, `score`, `max_score`, `feedback`, and `issues`
+— instead of free-form text.
+
+**Validation.** `evaluator.py` validates the response before trusting it:
+valid JSON, required/no-unexpected fields, numeric types, exercise ids and
+count matching the rubric, and scores within range. Malformed or
+out-of-range responses raise `LLMResponseError` rather than being silently
+accepted.
+
+**Python-controlled scoring.** The final grade is the sum of validated
+per-exercise scores, clamped to `[0, 10]`, calculated by Python — never
+taken verbatim from the LLM. Where `rubric.txt` follows the
+`### Ejercicio N ... (X points)` heading convention, Python also parses the
+rubric's own point values and uses them in place of whatever `max_score` the
+LLM reported, so the LLM cannot silently redefine an exercise's weight.
+
+**Fault tolerance.** Each notebook goes through the pipeline independently.
+A corrupted file, an execution timeout, or an invalid LLM response is
+caught, logged, and recorded against that submission alone — it does not
+stop the rest of the batch.
 
 ## How It Works
 
-1. **Execute** — `executor.py` runs the notebook with `nbclient`
-   (`allow_errors=True`, so one broken cell doesn't stop the rest) and
-   flattens code, outputs, and markdown into plain text.
-2. **Detect systemic failures** — timeouts and missing-import errors are
-   flagged deterministically, without needing the LLM to guess why a
-   notebook didn't run.
-3. **Evaluate semantically** — `evaluator.py` sends the rubric and the
-   flattened notebook to Claude, asking for a structured JSON assessment:
-   one object per exercise with `id`, `score`, `max_score`, `feedback`, and
-   `issues`.
-4. **Validate** — the response is checked for valid JSON, required fields,
-   unexpected fields, numeric types, exercise-id/count match against the
-   rubric, and in-range scores. Where `rubric.txt` follows the
-   `### Ejercicio N ... (X points)` heading convention, the rubric's own
-   point values override whatever `max_score` the LLM reported, so grading
-   weights are never solely LLM-controlled.
-5. **Score** — Python sums the validated per-exercise scores and clamps the
-   total to `[0, 10]`. This number is never taken directly from the LLM.
-6. **Report** — `grader.py` writes one row per notebook to `grades.csv`
-   (`filename, grade, comment`) and prints a batch summary.
+1. **Configure** — point the CLI at an assignment folder containing
+   `rubric.txt` and a `submissions/` directory (or pass a rubric/notebook
+   path directly).
+2. **Discover notebooks** — all `.ipynb` files under `submissions/` are
+   collected and sorted.
+3. **Execute** — each notebook is run with `nbclient`; cell errors don't
+   stop execution of the rest of the notebook.
+4. **Collect outputs/errors** — code, markdown, and cell outputs are
+   flattened into text; timeouts and missing-import errors are flagged.
+5. **Evaluate semantically** — the rubric and flattened notebook are sent to
+   the LLM, requesting a structured per-exercise assessment.
+6. **Validate the response** — schema, field, type, and range checks reject
+   anything malformed before it's trusted.
+7. **Calculate the score** — Python sums the validated per-exercise scores
+   and clamps the total.
+8. **Generate the final output** — one row per notebook is written to
+   `grades.csv` (`filename, grade, comment`), and a batch summary is printed.
 
-## Example
+## Configuration / Rubrics
 
-Given a rubric exercise:
+Grading criteria are not hard-coded — each assignment is a folder with its
+own `rubric.txt`, so the same tool grades any assignment by pointing it at a
+different folder:
 
+```text
+courses/
+└── intro_python/
+    ├── unidad2/
+    │   ├── rubric.txt       ← grading criteria
+    │   ├── submissions/     ← student .ipynb files
+    │   └── grades.csv       ← output (generated)
+    └── unidad3/
+        ├── rubric.txt
+        └── submissions/
 ```
+
+`rubric.txt` is free text, sent verbatim to the LLM as part of the prompt.
+A representative excerpt:
+
+```text
 ### Ejercicio 1 — Variables (1 point)
 - a) Numeric variable `a = 2` (0.5 pts)
 - b) List of 3 fruits (0.5 pts)
 ```
 
-and a student cell:
+Using the `### Ejercicio N — Title (X points)` heading format lets Python
+independently parse each exercise's point value and cross-check it against
+the LLM's response (see Validation above). A rubric that doesn't follow this
+convention still works — Python falls back to trusting the LLM's
+self-reported `max_score` per exercise.
+
+## Example Output
+
+Given the rubric excerpt above and an example submission cell:
 
 ```python
 a = 2
@@ -125,24 +166,11 @@ frutas = ["manzana", "pera"]
 print(a, frutas)
 ```
 
-the LLM's structured response for that exercise looks like:
+`grades.csv` (illustrative row, not a real student):
 
-```json
-{
-  "id": "ejercicio_1",
-  "title": "Variables",
-  "score": 0.5,
-  "max_score": 1.0,
-  "feedback": "La variable numérica está bien definida. La lista de frutas debía tener 3 elementos y solo tiene 2.",
-  "issues": ["La lista `frutas` tiene 2 elementos en vez de 3"]
-}
-```
-
-which Python turns into the corresponding `grades.csv` row:
-
-```
+```text
 filename,grade,comment
-ejemplo.ipynb,0.5,"**Variables — 0.50/1.00 pts**
+example_student.ipynb,0.5,"**Variables — 0.50/1.00 pts**
 
 La variable numérica está bien definida. La lista de frutas debía tener 3 elementos y solo tiene 2.
 
@@ -151,111 +179,60 @@ La variable numérica está bien definida. La lista de frutas debía tener 3 ele
 **Nota final: 0.50/10**"
 ```
 
-(A real rubric has several exercises; the final grade is the sum of all of
-their validated scores.)
+A real rubric has multiple exercises; the final grade is the sum of all of
+their validated per-exercise scores.
 
-## Design Decisions
+## Error Handling and Edge Cases
 
-**Deterministic checks happen before the LLM is asked anything.** Timeouts
-and missing imports are unambiguous, cheap to detect, and don't benefit from
-a judgment call — checking for them first avoids spending an LLM call
-diagnosing something Python already knows for certain.
+| Situation | Behaviour |
+|---|---|
+| Cell times out | Flagged as `timeout`; notebook is still graded on its written code |
+| Missing import | Flagged as `import_error`; noted for the LLM rather than auto-failed |
+| Notebook fails to execute / is corrupted | Exception caught, logged, and recorded in the CSV row for that file |
+| Malformed or invalid LLM response | Rejected by schema validation (`LLMResponseError`), logged, and recorded in the CSV row |
+| One notebook fails | The batch continues; the failure is isolated to that row |
 
-**The LLM is used only for semantic evaluation.** Deciding whether a
-particular approach satisfies an exercise, giving partial credit, and
-writing specific feedback all require reading and understanding code the way
-a human grader would — that's a judgment call, not a fixed rule, which is
-exactly what an LLM is suited for and a hand-written checker isn't.
+## Testing
 
-**The final score is always calculated in Python, not trusted from the
-LLM.** LLMs are not reliable arithmetic engines, and a grade is a number a
-student's outcome depends on — it needs to be reproducible and auditable
-independent of any single model response. The LLM proposes a score and
-justification per exercise; Python validates, applies the rubric's real
-point values, and computes the total.
+```text
+tests/
+├── test_executor.py    # valid notebooks, runtime errors, timeouts, missing imports
+├── test_evaluator.py   # valid/malformed/incomplete/out-of-range LLM responses
+├── test_grader.py      # end-to-end batch grading, batch isolation, CSV output
+└── test_edge_cases.py  # empty notebooks, markdown-only notebooks, corrupted files
+```
 
-**Batch failures are isolated per notebook.** Grading runs unattended over
-an entire class's submissions; one corrupted file, one execution timeout, or
-one malformed LLM response must not block grading for the other 29 students.
-Every notebook goes through the pipeline independently, and a failure is
-recorded against that submission alone.
+Run with:
 
-## Limitations
+```bash
+uv run pytest
+```
 
-- **LLM variability** — semantic grading can vary slightly between runs or
-  across model versions; it is not bit-for-bit reproducible the way a unit
-  test is.
-- **Rubric ambiguity** — `rubric.txt` is free text sent verbatim to the LLM.
-  Underspecified exercises rely on the LLM's interpretation, even with
-  explicit "don't penalize X" notes in the rubric.
-- **Best-effort rubric weight cross-checking** — Python only overrides the
-  LLM's self-reported `max_score` when `rubric.txt` follows the
-  `### Ejercicio N ... (X points)` heading convention. A differently
-  formatted rubric falls back to trusting the LLM's reported `max_score`.
-- **No formal human-vs-automated agreement measurement yet** — see
-  Evaluation below.
-- **Cases that likely need human review**: borderline pass/fail grades,
-  unconventional-but-correct solutions, and exercises the rubric itself
-  flags as ambiguous.
+Tests target critical paths and failure modes rather than exhaustive
+coverage (no coverage percentage has been measured). `evaluate_notebook`
+accepts an injectable `LLMEvaluator`, so evaluator and grader tests use a
+fake implementation — no real API calls are made during testing.
 
-## Evaluation
-
-A formal comparison between automated and human-assigned grades is planned
-as a **future milestone (v1.1)**, once a representative, anonymized dataset
-of student submissions with human-assigned grades has been collected. At
-that point the plan is to build a held-out evaluation dataset, compute mean
-absolute error and agreement/correlation between human and automated grades,
-analyze systematic failure modes, and publish the results here.
-
-This version intentionally contains no evaluation metrics — none have been
-measured yet, and none are fabricated.
-
-## Reproducibility
-
-### Setup
+## Reproducibility / Installation
 
 ```bash
 uv sync
 .venv/bin/python -m ipykernel install --user --name python3
-cp .env.example .env   # then edit .env and set your ANTHROPIC_API_KEY
+cp .env.example .env   # then set ANTHROPIC_API_KEY in .env
 ```
 
-Dependencies are pinned in `uv.lock`; `uv sync` reproduces the exact
-environment on any machine. `.env` is gitignored and loaded automatically
-via `python-dotenv`.
+Dependencies are pinned in `uv.lock`, so `uv sync` reproduces the exact
+environment on any machine. `.env` is gitignored and loaded automatically at
+runtime via `python-dotenv`.
 
-### Folder structure
-
-Organise work by course and assignment:
-
-```
-courses/
-└── intro_python/
-│   ├── unidad2/
-│   │   ├── rubric.txt       ← grading criteria
-│   │   ├── submissions/     ← student .ipynb files go here
-│   │   └── grades.csv       ← output (auto-generated)
-│   └── unidad3/
-│       ├── rubric.txt
-│       └── submissions/
-└── exploratory_analysis/
-    └── unidad1/
-        ├── rubric.txt
-        └── submissions/
-```
-
-### Usage
-
-**Grade a full assignment** (recommended):
+**Grade a full assignment:**
 ```bash
 uv run grader.py --assignment ./courses/intro_python/unidad2
 ```
-Automatically reads `rubric.txt` and `submissions/` from the folder, and
-writes `grades.csv` there.
 
 **Grade a single notebook:**
 ```bash
-uv run grader.py --file ./courses/intro_python/unidad2/submissions/student.ipynb --rubric ./courses/intro_python/unidad2/rubric.txt
+uv run grader.py --file ./submissions/student.ipynb --rubric ./rubric.txt
 ```
 
 **Grade a folder manually:**
@@ -263,63 +240,38 @@ uv run grader.py --file ./courses/intro_python/unidad2/submissions/student.ipynb
 uv run grader.py --notebooks ./submissions --rubric ./rubric.txt --output grades.csv
 ```
 
-Output:
-```
-Grading: 100%|██████████| 30/30 [02:14<00:00,  4.5s/notebook]
+## Evaluation
 
---- Grading Summary ---
-Notebooks graded : 30
-Average grade    : 7.43 / 10
-Passed (>=6)     : 24 / 30
-Errors           : 1
-Results saved to : courses/intro_python/unidad2/grades.csv
-```
+Formal evaluation against human grading is planned as a future milestone. A
+representative anonymized dataset of submissions with human-assigned grades
+will be collected before reporting agreement metrics.
 
-`grades.csv` columns: `filename`, `grade`, `comment`.
+No evaluation has been performed yet, and this README does not include any
+evaluation metrics — measured or otherwise.
 
-### Error handling
+## Limitations
 
-| Situation | Behaviour |
-|---|---|
-| Cell times out | Flagged as `timeout`; notebook still graded on its written code |
-| Missing import | Flagged as `import_error`; noted for the LLM, not auto-failed |
-| Notebook fails to execute / is corrupted | Error caught, logged, and recorded in the CSV; pipeline continues |
-| Malformed or invalid LLM response | Rejected by schema validation (`LLMResponseError`), logged, and recorded in the CSV; pipeline continues |
-
-### Testing
-
-```bash
-uv run pytest
-```
-
-Tests cover the critical paths and failure modes of each module — notebook
-execution (valid notebooks, runtime errors, timeouts, missing imports),
-LLM response validation (malformed/incomplete/out-of-range responses), and
-end-to-end batch grading (including that one failing notebook doesn't stop
-the rest). They don't call the real Anthropic API — `evaluate_notebook`
-accepts an injectable `LLMEvaluator`, and tests use a fake one.
-
-### Customising the rubric
-
-Edit `rubric.txt` with your assignment criteria. The rubric is sent verbatim
-to Claude. Use the `### Ejercicio N — Title (X points)` heading format so
-NotebookGrader can also verify the LLM's response against your point values
-directly. Point values should sum to 10.
-
-## Project structure
-
-```
-grader.py       # CLI entry point, batch orchestration, CSV output
-executor.py     # Notebook execution via nbclient
-evaluator.py    # LLM prompt, structured response validation, Python scoring
-tests/          # pytest suite for executor, evaluator, grader, edge cases
-courses/        # One folder per course, one subfolder per assignment
-```
+- **LLM variability** — semantic grading can vary slightly between runs or
+  model versions; it is not bit-for-bit reproducible.
+- **Rubric ambiguity** — `rubric.txt` is free text; underspecified exercises
+  rely on the LLM's interpretation of the instructor's intent.
+- **Semantic evaluation can disagree with human graders** — this has not
+  been formally measured yet (see Evaluation above).
+- **Rubric weight cross-checking is best-effort** — Python only overrides
+  the LLM's self-reported `max_score` when `rubric.txt` follows the
+  `### Ejercicio N ... (X points)` heading convention.
+- **Execution environment dependencies** — notebook execution requires the
+  `python3` Jupyter kernel to be installed; missing packages the student's
+  code imports will surface as `import_error`, not a false negative.
+- **Some cases likely need human review** — borderline pass/fail grades and
+  exercises the rubric itself flags as ambiguous.
 
 ## Future Improvements
 
-- Retry logic for transient LLM API errors.
-- CLI flags for model name and execution timeout (currently constants).
-- A richer batch summary that breaks down failures by stage (execution vs.
-  LLM validation) instead of one aggregate error count.
-- The human-vs-automated evaluation milestone described above.
+- Formal evaluation against human-assigned grades.
+- Additional deterministic checks where practical (beyond timeout/import
+  detection).
+- Calibration review of LLM-assigned partial credit against instructor
+  expectations.
+- Support for an additional LLM provider behind the existing
+  `LLMEvaluator` interface.
