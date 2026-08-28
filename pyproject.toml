@@ -5,10 +5,15 @@ description = "CLI tool that automatically grades Jupyter notebook submissions u
 requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.40.0",
+    "gradio>=6.26.0",
     "ipykernel>=6.29.0",
+    "matplotlib>=3.11.1",
     "nbclient>=0.10.0",
     "nbformat>=5.10.0",
+    "numpy>=2.4.6",
+    "pandas>=3.0.5",
     "python-dotenv>=1.0.0",
+    "seaborn>=0.13.2",
     "tqdm>=4.66.0",
 ]
 

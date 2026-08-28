@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import nbformat
 from nbclient import NotebookClient
 from nbclient.exceptions import CellTimeoutError
@@ -16,7 +18,7 @@ def execute_notebook(notebook_path, timeout=30):
 
     error_type = None
     try:
-        client.execute()
+        client.execute(cwd=str(Path(notebook_path).resolve().parent))
     except CellTimeoutError:
         error_type = "timeout"
     except Exception as e:
